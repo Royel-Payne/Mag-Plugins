@@ -1,3 +1,4 @@
+// Modified for the Shadowgain fork (set-transfer config/UI, ranking tiebreak, tinkering clipboard output, dark theme), 2026-08-24. See git history for details. [LGPL 2.1]
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -56,7 +57,11 @@ namespace Mag_SuitBuilder
 					col.DefaultCellStyle = style;
 			}
 
+			filtersControl1.AllowSetTransfers = Settings.Default.AllowSetTransfers;
+
 			filtersControl1.FiltersChanged += () => UpdateBoundListFromTreeViewNodes(CharactersTreeView.Nodes);
+
+			Theme.Apply(this);
 
 			base.OnLoad(e);
 		}
@@ -108,6 +113,7 @@ namespace Mag_SuitBuilder
 			foreach (DataGridViewColumn column in equipmentGrid.Columns)
 				columnWidths += (columnWidths == null ? null : ",") + column.Width.ToString(CultureInfo.InvariantCulture);
 			Settings.Default.ColumnWidths = columnWidths;
+			Settings.Default.AllowSetTransfers = filtersControl1.AllowSetTransfers;
 			Settings.Default.Save();
 
 			base.OnClosing(e);
@@ -406,6 +412,7 @@ namespace Mag_SuitBuilder
 			config.CantripsToLookFor = filtersControl1.CantripsToLookFor;
 			config.PrimaryArmorSet = filtersControl1.PrimaryArmorSetId;
 			config.SecondaryArmorSet = filtersControl1.SecondaryArmorSetId;
+			config.AllowSetTransfers = filtersControl1.AllowSetTransfers;
 
 			// Build the list of items we're going to use in our search
 			searchItems = new List<LeanMyWorldObject>();
@@ -416,6 +423,12 @@ namespace Mag_SuitBuilder
 				if (piece.Locked || (!piece.Exclude && config.ItemPassesRules(piece)))
 					searchItems.Add(new LeanMyWorldObject(piece));
 			}
+
+			// Custom ACE server rule: add hypothetical pieces that could be created by transferring a
+			// loot attribute set from a donor piece (destroyed) onto another piece of matching coverage.
+			// These must be added before the spell bitmap pass below so they get search spells assigned.
+			if (config.AllowSetTransfers)
+				searchItems.AddRange(SetTinkering.GenerateVariants(boundList, config));
 
 			var possibleSpells = new List<Spell>();
 
@@ -456,17 +469,17 @@ namespace Mag_SuitBuilder
 			}
 
 			// Now, we create our bitmapped spell map
-			if (possibleSpells.Count > 32)
+			if (possibleSpells.Count > 64)
 			{
 				MessageBox.Show("Too many spells.");
 				btnCalculatePossibilities.Enabled = true;
 				return;
 			}
 
-			Dictionary<Spell, int> spellMap = new Dictionary<Spell, int>();
+			Dictionary<Spell, long> spellMap = new Dictionary<Spell, long>();
 
 			for (int i = 0; i < possibleSpells.Count; i++)
-				spellMap.Add(possibleSpells[i], 1 << i);
+				spellMap.Add(possibleSpells[i], 1L << i);
 
 			// Now, we update each item with the new spell map
 			foreach (var piece in searchItems)
@@ -670,7 +683,10 @@ namespace Mag_SuitBuilder
 
 						if (nodeAsSuit.Suit.TotalBaseArmorLevel == suit.TotalBaseArmorLevel)
 						{
-							if ((nodeAsSuit.Suit.TotalEffectiveLegendaries < suit.TotalEffectiveLegendaries) || (nodeAsSuit.Suit.TotalEffectiveLegendaries == suit.TotalEffectiveLegendaries && nodeAsSuit.Suit.TotalEffectiveEpics < suit.TotalEffectiveEpics))
+							// At otherwise equal quality, suits requiring fewer set transfers sort first
+							if ((nodeAsSuit.Suit.TotalEffectiveLegendaries < suit.TotalEffectiveLegendaries) ||
+								(nodeAsSuit.Suit.TotalEffectiveLegendaries == suit.TotalEffectiveLegendaries && nodeAsSuit.Suit.TotalEffectiveEpics < suit.TotalEffectiveEpics) ||
+								(nodeAsSuit.Suit.TotalEffectiveLegendaries == suit.TotalEffectiveLegendaries && nodeAsSuit.Suit.TotalEffectiveEpics == suit.TotalEffectiveEpics && nodeAsSuit.Suit.TotalSetTinkers > suit.TotalSetTinkers))
 							{
 								nodes.Insert(i, newNode);
 								break;
@@ -767,7 +783,26 @@ namespace Mag_SuitBuilder
 				{
 					EquipmentPieceControl coveragePiece = cntrl as EquipmentPieceControl;
 
-					coveragePiece.SetEquipmentPiece(suit[coveragePiece.EquippableSlots] == null ? null : suit[coveragePiece.EquippableSlots].ExtendedMyWorldObject);
+					// Find the piece covering this control's slot, along with the actual slot(s) it's worn in
+					LeanMyWorldObject piece = null;
+					EquipMask wornSlot = EquipMask.None;
+
+					foreach (var kvp in suit)
+					{
+						if ((kvp.Key & coveragePiece.EquippableSlots) != 0)
+						{
+							piece = kvp.Value;
+							wornSlot = kvp.Key;
+							break;
+						}
+					}
+
+					string setTinkerInstructions = null;
+
+					if (piece != null && piece.IsSetTinkeredVariant)
+						setTinkerInstructions = String.Join(Environment.NewLine, SetTinkering.GetInstructionLines(piece, wornSlot, suit.GetConsumedDonor(piece)));
+
+					coveragePiece.SetEquipmentPiece(piece, setTinkerInstructions);
 
 					cntrl.Refresh();
 				}
@@ -798,31 +833,55 @@ namespace Mag_SuitBuilder
 			if (node == null)
 				return;
 
-			AddEquipmentPieceToClipboard(node.Suit[EquipMask.HeadWear] == null ? null : node.Suit[EquipMask.HeadWear].ExtendedMyWorldObject, sb);
-			AddEquipmentPieceToClipboard(node.Suit[EquipMask.ChestArmor] == null ? null : node.Suit[EquipMask.ChestArmor].ExtendedMyWorldObject, sb);
-			AddEquipmentPieceToClipboard(node.Suit[EquipMask.AbdomenArmor] == null ? null : node.Suit[EquipMask.AbdomenArmor].ExtendedMyWorldObject, sb);
-			AddEquipmentPieceToClipboard(node.Suit[EquipMask.UpperArmArmor] == null ? null : node.Suit[EquipMask.UpperArmArmor].ExtendedMyWorldObject, sb);
-			AddEquipmentPieceToClipboard(node.Suit[EquipMask.LowerArmArmor] == null ? null : node.Suit[EquipMask.LowerArmArmor].ExtendedMyWorldObject, sb);
-			AddEquipmentPieceToClipboard(node.Suit[EquipMask.HandWear] == null ? null : node.Suit[EquipMask.HandWear].ExtendedMyWorldObject, sb);
-			AddEquipmentPieceToClipboard(node.Suit[EquipMask.UpperLegArmor] == null ? null : node.Suit[EquipMask.UpperLegArmor].ExtendedMyWorldObject, sb);
-			AddEquipmentPieceToClipboard(node.Suit[EquipMask.LowerLegArmor] == null ? null : node.Suit[EquipMask.LowerLegArmor].ExtendedMyWorldObject, sb);
-			AddEquipmentPieceToClipboard(node.Suit[EquipMask.FootWear] == null ? null : node.Suit[EquipMask.FootWear].ExtendedMyWorldObject, sb);
+			AddEquipmentPieceToClipboard(node.Suit[EquipMask.HeadWear], sb);
+			AddEquipmentPieceToClipboard(node.Suit[EquipMask.ChestArmor], sb);
+			AddEquipmentPieceToClipboard(node.Suit[EquipMask.AbdomenArmor], sb);
+			AddEquipmentPieceToClipboard(node.Suit[EquipMask.UpperArmArmor], sb);
+			AddEquipmentPieceToClipboard(node.Suit[EquipMask.LowerArmArmor], sb);
+			AddEquipmentPieceToClipboard(node.Suit[EquipMask.HandWear], sb);
+			AddEquipmentPieceToClipboard(node.Suit[EquipMask.UpperLegArmor], sb);
+			AddEquipmentPieceToClipboard(node.Suit[EquipMask.LowerLegArmor], sb);
+			AddEquipmentPieceToClipboard(node.Suit[EquipMask.FootWear], sb);
 			sb.AppendLine();
-			AddEquipmentPieceToClipboard(node.Suit[EquipMask.ChestWear] == null ? null : node.Suit[EquipMask.ChestWear].ExtendedMyWorldObject, sb);
-			AddEquipmentPieceToClipboard(node.Suit[EquipMask.UpperLegWear] == null ? null : node.Suit[EquipMask.UpperLegWear].ExtendedMyWorldObject, sb);
+			AddEquipmentPieceToClipboard(node.Suit[EquipMask.ChestWear], sb);
+			AddEquipmentPieceToClipboard(node.Suit[EquipMask.UpperLegWear], sb);
 			sb.AppendLine();
-			AddEquipmentPieceToClipboard(node.Suit[EquipMask.NeckWear] == null ? null : node.Suit[EquipMask.NeckWear].ExtendedMyWorldObject, sb);
-			AddEquipmentPieceToClipboard(node.Suit[EquipMask.TrinketOne] == null ? null : node.Suit[EquipMask.TrinketOne].ExtendedMyWorldObject, sb);
-			AddEquipmentPieceToClipboard(node.Suit[EquipMask.WristWearLeft] == null ? null : node.Suit[EquipMask.WristWearLeft].ExtendedMyWorldObject, sb);
-			AddEquipmentPieceToClipboard(node.Suit[EquipMask.WristWearRight] == null ? null : node.Suit[EquipMask.WristWearRight].ExtendedMyWorldObject, sb);
-			AddEquipmentPieceToClipboard(node.Suit[EquipMask.FingerWearLeft] == null ? null : node.Suit[EquipMask.FingerWearLeft].ExtendedMyWorldObject, sb);
-			AddEquipmentPieceToClipboard(node.Suit[EquipMask.FingerWearRight] == null ? null : node.Suit[EquipMask.FingerWearRight].ExtendedMyWorldObject, sb);
+			AddEquipmentPieceToClipboard(node.Suit[EquipMask.NeckWear], sb);
+			AddEquipmentPieceToClipboard(node.Suit[EquipMask.TrinketOne], sb);
+			AddEquipmentPieceToClipboard(node.Suit[EquipMask.WristWearLeft], sb);
+			AddEquipmentPieceToClipboard(node.Suit[EquipMask.WristWearRight], sb);
+			AddEquipmentPieceToClipboard(node.Suit[EquipMask.FingerWearLeft], sb);
+			AddEquipmentPieceToClipboard(node.Suit[EquipMask.FingerWearRight], sb);
 			sb.AppendLine();
 			sb.AppendLine("Total Effective Legendaries: ".PadRight(30) + node.Suit.TotalEffectiveLegendaries);
 			sb.AppendLine("Total Effective Epics: ".PadRight(30) + node.Suit.TotalEffectiveEpics);
 			sb.AppendLine("Total Effective Majors: ".PadRight(30) + node.Suit.TotalEffectiveMajors);
 			sb.AppendLine("Total Base Armor Level: ".PadRight(30) + node.Suit.TotalBaseArmorLevel);
 			sb.AppendLine();
+
+			if (node.Suit.TotalSetTinkers > 0)
+			{
+				sb.AppendLine("Required set tinkering (" + node.Suit.TotalSetTinkers + " transfer" + (node.Suit.TotalSetTinkers == 1 ? "" : "s") + "):");
+
+				int step = 1;
+
+				foreach (var kvp in node.Suit)
+				{
+					if (!kvp.Value.IsSetTinkeredVariant)
+						continue;
+
+					var target = kvp.Value.ExtendedMyWorldObject;
+
+					sb.AppendLine(step + ") " + target.Name + " (" + target.Owner + "): " + SetTinkering.SetName(kvp.Value.OriginalSetId) + " -> " + SetTinkering.SetName(kvp.Value.ItemSetId));
+
+					foreach (var line in SetTinkering.GetInstructionLines(kvp.Value, kvp.Key, node.Suit.GetConsumedDonor(kvp.Value)))
+						sb.AppendLine("   - " + line);
+
+					step++;
+				}
+
+				sb.AppendLine();
+			}
 
 			var spells = new List<Spell>();
 
@@ -861,17 +920,25 @@ namespace Mag_SuitBuilder
 			} catch {};
 		}
 
-		void AddEquipmentPieceToClipboard(ExtendedMyWorldObject mwo, StringBuilder sb)
+		void AddEquipmentPieceToClipboard(LeanMyWorldObject piece, StringBuilder sb)
 		{
-			if (mwo == null)
+			if (piece == null)
 			{
 				sb.AppendLine();
 				return;
 			}
 
+			var mwo = piece.ExtendedMyWorldObject;
+
 			var itemInfo = new ItemInfo(mwo);
 
-			sb.AppendLine(mwo.Owner.PadRight(20) + ", " + itemInfo);
+			sb.Append(mwo.Owner.PadRight(20) + ", " + itemInfo);
+
+			// The ItemInfo line shows the set the item actually carries; flag the transferred set
+			if (piece.IsSetTinkeredVariant)
+				sb.Append("  ** SET TINK -> " + SetTinkering.SetName(piece.ItemSetId) + " **");
+
+			sb.AppendLine();
 		}
 
 		private void cmdExpandAll_Click(object sender, EventArgs e)

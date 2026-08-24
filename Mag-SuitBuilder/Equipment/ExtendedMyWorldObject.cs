@@ -1,7 +1,7 @@
+// Modified for the Shadowgain fork (null-safe spell caching via SearchDiagnostics), 2026-08-24. See git history for details. [LGPL 2.1]
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Windows.Forms;
 using System.Xml.Serialization;
 
 using Mag.Shared;
@@ -130,15 +130,17 @@ namespace Mag_SuitBuilder.Equipment
 
 			foreach (var spellId in Spells)
 			{
-				try
+				// GetSpell returns null (not an exception) for unknown ids; a null in cachedSpells
+				// would NRE later inside the search comparisons, so skip and report instead.
+				Spell spell = SpellTools.GetSpell(spellId);
+
+				if (spell == null)
 				{
-					Spell spell = SpellTools.GetSpell(spellId);
-					cachedSpells.Add(spell);
+					SearchDiagnostics.Notify("Unable to cache spell id: " + spellId + " on item: " + Name + ". Spell ID not found in the master table.");
+					continue;
 				}
-				catch (ArgumentException)
-				{
-					MessageBox.Show("Unable to cache spell id: " + spellId + " on item: " + Name + ". Spell ID not found in the master table.");
-				}
+
+				cachedSpells.Add(spell);
 			}
 		}
 	}

@@ -1,3 +1,4 @@
+// Modified for the Shadowgain fork (Allow set transfers toggle and donor-visibility filter bypass), 2026-08-24. See git history for details. [LGPL 2.1]
 using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
@@ -49,6 +50,9 @@ namespace Mag_SuitBuilder.Equipment
 
 			foreach (var control in Controls)
 			{
+				if (control == chkAllowSetTransfers) // Search behavior toggle, not an item filter
+					continue;
+
 				if (control is CheckBox)
 					(control as CheckBox).Checked = false;
 			}
@@ -65,7 +69,7 @@ namespace Mag_SuitBuilder.Equipment
 
 			foreach (var control in Controls)
 			{
-				if (control == checkRemoveEquipped || control == chkRemoveUnequipped)
+				if (control == checkRemoveEquipped || control == chkRemoveUnequipped || control == chkAllowSetTransfers)
 					continue;
 
 				if (control is CheckBox)
@@ -210,13 +214,17 @@ namespace Mag_SuitBuilder.Equipment
 			}
 
 
+			// When set transfers are allowed, any loot body armor carrying a loot attribute set is a potential
+			// donor (or transfer target) and must stay visible to the search regardless of set/spell filters
+			bool potentialSetTransferPiece = chkAllowSetTransfers.Checked && Search.SetTinkering.IsPotentialTransferPiece(mwo);
+
 			if (mwo.EquippableSlots.IsBodyArmor())
 			{
 				// Both are No Armor Set and the item has a set
 				if (PrimaryArmorSetId == 0 && SecondaryArmorSetId == 0 && mwo.ItemSetId != 0)
 					return false;
 
-				if (PrimaryArmorSetId != 255 && SecondaryArmorSetId != 255)
+				if (PrimaryArmorSetId != 255 && SecondaryArmorSetId != 255 && !potentialSetTransferPiece)
 				{
 					if (PrimaryArmorSetId != mwo.ItemSetId && SecondaryArmorSetId != mwo.ItemSetId)
 						return false;
@@ -366,7 +374,7 @@ namespace Mag_SuitBuilder.Equipment
 
 
 			// Spell Selector
-			if (cantripSelectorControl1.Count > 0)
+			if (cantripSelectorControl1.Count > 0 && !potentialSetTransferPiece)
 			{
 				foreach (var spell in mwo.CachedSpells)
 				{
@@ -381,6 +389,17 @@ namespace Mag_SuitBuilder.Equipment
 			}
 
 			return true;
+		}
+
+		/// <summary>
+		/// Custom ACE server rule toggle: consider transferring loot attribute sets between pieces during the search.
+		/// </summary>
+		[System.ComponentModel.Browsable(false)]
+		[System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+		public bool AllowSetTransfers
+		{
+			get { return chkAllowSetTransfers.Checked; }
+			set { chkAllowSetTransfers.Checked = value; }
 		}
 
 		public int PrimaryArmorSetId

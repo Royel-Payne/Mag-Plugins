@@ -1,3 +1,4 @@
+// Modified for the Shadowgain fork (theme-based cantrip level colors), 2026-08-24. See git history for details. [LGPL 2.1]
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -152,13 +153,13 @@ namespace Mag_SuitBuilder.Spells
 						Color newColor = Color.Empty;
 
 						if (spells.Length > 0 && item.IsSameOrSurpasses(spells[0]))
-							newColor = lblLegendary.BackColor;
+							newColor = Theme.Legendary;
 						else if (spells.Length > 1 && item.IsSameOrSurpasses(spells[1]))
-							newColor = lblEpic.BackColor;
+							newColor = Theme.Epic;
 						else if (spells.Length > 2 && item.IsSameOrSurpasses(spells[2]))
-							newColor = lblMajor.BackColor;
+							newColor = Theme.Major;
 						else if (spells.Length > 3 && item.IsSameOrSurpasses(spells[3]))
-							newColor = lblMinor.BackColor;
+							newColor = Theme.Minor;
 
 						cell.Style.BackColor = newColor;
 						cell.Style.SelectionBackColor = newColor;
@@ -377,13 +378,13 @@ namespace Mag_SuitBuilder.Spells
 
 			int index = -1;
 
-			if (cell.Style.BackColor == lblLegendary.BackColor)
+			if (cell.Style.BackColor == Theme.Legendary)
 				index = 0;
-			else if (cell.Style.BackColor == lblEpic.BackColor)
+			else if (cell.Style.BackColor == Theme.Epic)
 				index = 1;
-			else if (cell.Style.BackColor == lblMajor.BackColor)
+			else if (cell.Style.BackColor == Theme.Major)
 				index = 2;
-			else if (cell.Style.BackColor == lblMinor.BackColor)
+			else if (cell.Style.BackColor == Theme.Minor)
 				index = 3;
 
 			Spell[] spells = cell.Tag as Spell[];

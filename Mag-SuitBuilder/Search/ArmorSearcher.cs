@@ -1,7 +1,7 @@
+// Modified for the Shadowgain fork (set-transfer variants in bucketing, TryPush donor accounting, pluggable diagnostics), 2026-08-24. See git history for details. [LGPL 2.1]
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using System.Windows.Forms;
 
 using Mag.Shared.Constants;
 
@@ -56,15 +56,18 @@ namespace Mag_SuitBuilder.Search
 				if (piece.EquippableSlots == (EquipMask.LowerLegWear | EquipMask.FootWear)) // Some shoes cover both feet/lower legs but can only go in the feet slot
 					buckets.PutItemInBuckets(piece, EquipMask.FootWear);
 				else if (piece.EquippableSlots.IsBodyArmor() && piece.EquippableSlots.GetTotalBitsSet() != piece.Coverage.GetTotalBitsSet())
-					MessageBox.Show("Unable to add " + piece + " into an appropriate bucket. EquippableSlots != Coverage" + Environment.NewLine + "EquippableSlots: " + piece.EquippableSlots + Environment.NewLine + "Coverage: " + piece.Coverage);
+					SearchDiagnostics.Notify("Unable to add " + piece + " into an appropriate bucket. EquippableSlots != Coverage" + Environment.NewLine + "EquippableSlots: " + piece.EquippableSlots + Environment.NewLine + "Coverage: " + piece.Coverage);
 				else if (piece.EquippableSlots.IsBodyArmor() && piece.EquippableSlots.GetTotalBitsSet() > 1)
 				{
 					if (piece.Material == null) // Can't reduce non-loot gen pieces
 						buckets.PutItemInBuckets(piece);
 					else
 					{
-						// Lets try to reduce this
-						foreach (var option in piece.Coverage.ReductionOptions())
+						// Lets try to reduce this.
+						// Set-tinkered variants carry a narrowed list of coverages (only those with a donor available).
+						var reductionOptions = piece.WearableReductionOptions ?? (IReadOnlyList<CoverageMask>)piece.Coverage.ReductionOptions();
+
+						foreach (var option in reductionOptions)
 						{
 							if (option == CoverageMask.Head)					buckets.PutItemInBuckets(piece, EquipMask.HeadWear);
 							else if (option == CoverageMask.OuterwearChest)		buckets.PutItemInBuckets(piece, EquipMask.ChestArmor);
@@ -76,7 +79,7 @@ namespace Mag_SuitBuilder.Search
 							else if (option == CoverageMask.OuterwearLowerLegs) buckets.PutItemInBuckets(piece, EquipMask.LowerLegArmor);
 							else if (option == CoverageMask.Feet)				buckets.PutItemInBuckets(piece, EquipMask.FootWear);
 							else
-								MessageBox.Show("Unable to add " + piece + " into an appropriate bucket." + Environment.NewLine + "Reduction coverage option of " + option + " not expected.");
+								SearchDiagnostics.Notify("Unable to add " + piece + " into an appropriate bucket." + Environment.NewLine + "Reduction coverage option of " + option + " not expected.");
 						}
 					}
 				}
@@ -199,11 +202,12 @@ namespace Mag_SuitBuilder.Search
 					{
 						if ((!piece.EquippableSlots.IsBodyArmor() || clone.HasRoomForArmorSet(Config.PrimaryArmorSet, Config.SecondaryArmorSet, piece.ItemSetId)) && clone.CanGetBeneficialSpellFrom(piece))
 						{
-							clone.Push(piece, buckets[index].Slot);
+							if (clone.TryPush(piece, buckets[index].Slot))
+							{
+								SearchThroughBuckets(clone, index + 1);
 
-							SearchThroughBuckets(clone, index + 1);
-
-							clone.Pop();
+								clone.Pop();
+							}
 						}
 					}
 				});
@@ -216,11 +220,12 @@ namespace Mag_SuitBuilder.Search
 					{
 						if (builder.CanGetBeneficialSpellFrom(piece) && (!piece.EquippableSlots.IsBodyArmor() || builder.HasRoomForArmorSet(Config.PrimaryArmorSet, Config.SecondaryArmorSet, piece.ItemSetId)))
 						{
-							builder.Push(piece, buckets[index].Slot);
+							if (builder.TryPush(piece, buckets[index].Slot))
+							{
+								SearchThroughBuckets(builder, index + 1);
 
-							SearchThroughBuckets(builder, index + 1);
-
-							builder.Pop();
+								builder.Pop();
+							}
 						}
 					}
 				}

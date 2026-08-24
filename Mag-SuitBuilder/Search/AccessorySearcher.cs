@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+// Modified for the Shadowgain fork (TryPush physical-identity guard), 2026-08-24. See git history for details. [LGPL 2.1]
+using System.Collections.Generic;
 
 using Mag.Shared.Constants;
 
@@ -136,11 +137,12 @@ namespace Mag_SuitBuilder.Search
 			{
 				if (SuitBuilder.CanGetBeneficialSpellFrom(piece))
 				{
-					SuitBuilder.Push(piece, buckets[index].Slot);
+					if (SuitBuilder.TryPush(piece, buckets[index].Slot))
+					{
+						SearchThroughBuckets(buckets, index + 1);
 
-					SearchThroughBuckets(buckets, index + 1);
-
-					SuitBuilder.Pop();
+						SuitBuilder.Pop();
+					}
 				}
 			}
 

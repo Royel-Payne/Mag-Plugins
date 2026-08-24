@@ -1,3 +1,4 @@
+// Modified for the Shadowgain fork (consumed-donor tracking and set-tink count), 2026-08-24. See git history for details. [LGPL 2.1]
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -38,6 +39,21 @@ namespace Mag_SuitBuilder.Search
 		public int TotalEffectiveMajors { get; private set; }
 
 		readonly Dictionary<int, int> armorSetCounts = new Dictionary<int, int>();
+
+		// For set-tinkered variant pieces: the physical item consumed to provide the transferred set
+		readonly Dictionary<LeanMyWorldObject, Equipment.ExtendedMyWorldObject> consumedDonors = new Dictionary<LeanMyWorldObject, Equipment.ExtendedMyWorldObject>();
+
+		/// <summary>
+		/// The number of set transfers ("set tinks") the user must perform to realize this suit.
+		/// </summary>
+		public int TotalSetTinkers { get { return consumedDonors.Count; } }
+
+		public Equipment.ExtendedMyWorldObject GetConsumedDonor(LeanMyWorldObject piece)
+		{
+			Equipment.ExtendedMyWorldObject donor;
+			consumedDonors.TryGetValue(piece, out donor);
+			return donor;
+		}
 
 		/// <summary>
 		/// This will try to add the item to the suit
@@ -83,7 +99,7 @@ namespace Mag_SuitBuilder.Search
 		}
 
 		/// <exception cref="ArgumentException">Trying to add an item that covers a slot already filled.</exception>
-		public void AddItem(EquipMask slots, LeanMyWorldObject item)
+		public void AddItem(EquipMask slots, LeanMyWorldObject item, Equipment.ExtendedMyWorldObject consumedDonor = null)
 		{
 			// Make sure we don't overlap a slot
 			foreach (var o in this)
@@ -94,6 +110,9 @@ namespace Mag_SuitBuilder.Search
 
 			items.Add(slots, item);
 			piecesHashSet.Add(item);
+
+			if (consumedDonor != null)
+				consumedDonors[item] = consumedDonor;
 
 			if (item.CalcedStartingArmorLevel > 0)
 				TotalBaseArmorLevel += (item.CalcedStartingArmorLevel * slots.GetTotalBitsSet());
@@ -202,7 +221,12 @@ namespace Mag_SuitBuilder.Search
 
 			}
 
-			return piecesHashSet.Count + ", AL: " + TotalBaseArmorLevel + ", [L/E/M]: [" + TotalEffectiveLegendaries + "/" + TotalEffectiveEpics + "/" + TotalEffectiveMajors + "] " + sets;
+			string result = piecesHashSet.Count + ", AL: " + TotalBaseArmorLevel + ", [L/E/M]: [" + TotalEffectiveLegendaries + "/" + TotalEffectiveEpics + "/" + TotalEffectiveMajors + "] " + sets;
+
+			if (TotalSetTinkers > 0)
+				result += " (" + TotalSetTinkers + " set tink" + (TotalSetTinkers == 1 ? "" : "s") + ")";
+
+			return result;
 		}
 	}
 }

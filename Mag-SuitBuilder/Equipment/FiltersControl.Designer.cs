@@ -1,3 +1,4 @@
+// Modified for the Shadowgain fork (Allow set transfers checkbox), 2026-08-24. See git history for details. [LGPL 2.1]
 namespace Mag_SuitBuilder.Equipment
 {
 	partial class FiltersControl
@@ -71,6 +72,7 @@ namespace Mag_SuitBuilder.Equipment
 			label5 = new System.Windows.Forms.Label();
 			cboPrimaryArmorSet = new System.Windows.Forms.ComboBox();
 			cboSecondaryArmorSet = new System.Windows.Forms.ComboBox();
+			chkAllowSetTransfers = new System.Windows.Forms.CheckBox();
 			txtMaximumBaseArmorLevel = new System.Windows.Forms.TextBox();
 			chkMasterySpear = new System.Windows.Forms.CheckBox();
 			chkMasteryDagger = new System.Windows.Forms.CheckBox();
@@ -615,7 +617,18 @@ namespace Mag_SuitBuilder.Equipment
 			cboSecondaryArmorSet.Size = new System.Drawing.Size(150, 23);
 			cboSecondaryArmorSet.TabIndex = 42;
 			cboSecondaryArmorSet.SelectedIndexChanged += cboFilter_SelectedIndexChanged;
-			// 
+			//
+			// chkAllowSetTransfers
+			//
+			chkAllowSetTransfers.AutoSize = true;
+			chkAllowSetTransfers.Location = new System.Drawing.Point(425, 130);
+			chkAllowSetTransfers.Name = "chkAllowSetTransfers";
+			chkAllowSetTransfers.Size = new System.Drawing.Size(131, 19);
+			chkAllowSetTransfers.TabIndex = 43;
+			chkAllowSetTransfers.Text = "Allow set transfers";
+			chkAllowSetTransfers.UseVisualStyleBackColor = true;
+			chkAllowSetTransfers.CheckedChanged += chkFilter_CheckedChanged;
+			//
 			// txtMaximumBaseArmorLevel
 			// 
 			txtMaximumBaseArmorLevel.Location = new System.Drawing.Point(539, 71);
@@ -1115,6 +1128,7 @@ namespace Mag_SuitBuilder.Equipment
 			Controls.Add(chkMasteryDagger);
 			Controls.Add(chkMasterySpear);
 			Controls.Add(txtMaximumBaseArmorLevel);
+			Controls.Add(chkAllowSetTransfers);
 			Controls.Add(cboSecondaryArmorSet);
 			Controls.Add(cboPrimaryArmorSet);
 			Controls.Add(label5);
@@ -1209,6 +1223,7 @@ namespace Mag_SuitBuilder.Equipment
 		private System.Windows.Forms.Label label5;
 		private System.Windows.Forms.ComboBox cboPrimaryArmorSet;
 		private System.Windows.Forms.ComboBox cboSecondaryArmorSet;
+		private System.Windows.Forms.CheckBox chkAllowSetTransfers;
 		private System.Windows.Forms.TextBox txtMaximumBaseArmorLevel;
 		private System.Windows.Forms.CheckBox chkMasterySpear;
 		private System.Windows.Forms.CheckBox chkMasteryDagger;

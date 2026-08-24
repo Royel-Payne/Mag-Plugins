@@ -1,3 +1,4 @@
+// Modified for the Shadowgain fork (dark-theme legend colors), 2026-08-24. See git history for details. [LGPL 2.1]
 namespace Mag_SuitBuilder.Spells
 {
 	partial class CantripSelectorControl
@@ -160,7 +161,8 @@ namespace Mag_SuitBuilder.Spells
 			// 
 			lblLegendary.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left;
 			lblLegendary.AutoSize = true;
-			lblLegendary.BackColor = System.Drawing.Color.DarkOrange;
+			lblLegendary.BackColor = Theme.LegendaryBright;
+			lblLegendary.ForeColor = System.Drawing.Color.Black;
 			lblLegendary.Location = new System.Drawing.Point(3, 179);
 			lblLegendary.Name = "lblLegendary";
 			lblLegendary.Size = new System.Drawing.Size(60, 15);
@@ -171,7 +173,8 @@ namespace Mag_SuitBuilder.Spells
 			// 
 			lblMinor.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left;
 			lblMinor.AutoSize = true;
-			lblMinor.BackColor = System.Drawing.Color.LightBlue;
+			lblMinor.BackColor = Theme.MinorBright;
+			lblMinor.ForeColor = System.Drawing.Color.Black;
 			lblMinor.Location = new System.Drawing.Point(200, 179);
 			lblMinor.Name = "lblMinor";
 			lblMinor.Size = new System.Drawing.Size(65, 15);
@@ -182,7 +185,8 @@ namespace Mag_SuitBuilder.Spells
 			// 
 			lblMajor.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left;
 			lblMajor.AutoSize = true;
-			lblMajor.BackColor = System.Drawing.Color.Pink;
+			lblMajor.BackColor = Theme.MajorBright;
+			lblMajor.ForeColor = System.Drawing.Color.Black;
 			lblMajor.Location = new System.Drawing.Point(130, 179);
 			lblMajor.Name = "lblMajor";
 			lblMajor.Size = new System.Drawing.Size(64, 15);
@@ -193,7 +197,8 @@ namespace Mag_SuitBuilder.Spells
 			// 
 			lblEpic.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left;
 			lblEpic.AutoSize = true;
-			lblEpic.BackColor = System.Drawing.Color.LightGreen;
+			lblEpic.BackColor = Theme.EpicBright;
+			lblEpic.ForeColor = System.Drawing.Color.Black;
 			lblEpic.Location = new System.Drawing.Point(69, 179);
 			lblEpic.Name = "lblEpic";
 			lblEpic.Size = new System.Drawing.Size(55, 15);

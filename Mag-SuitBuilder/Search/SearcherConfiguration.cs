@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+// Modified for the Shadowgain fork (AllowSetTransfers option), 2026-08-24. See git history for details. [LGPL 2.1]
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 
 using Mag_SuitBuilder.Equipment;
@@ -26,6 +27,13 @@ namespace Mag_SuitBuilder.Search
 		/// Armor set Id. 0 = None, 255 = Any
 		/// </summary>
 		public int SecondaryArmorSet { get; set; }
+
+		/// <summary>
+		/// Custom ACE server rule: allow moving a loot attribute set from a donor piece (which is destroyed)
+		/// onto another piece with matching coverage. When enabled, the search also considers hypothetical
+		/// set-tinkered pieces for the concrete Primary/Secondary sets selected.
+		/// </summary>
+		public bool AllowSetTransfers { get; set; }
 
 
 		public bool ItemPassesRules(ExtendedMyWorldObject item)

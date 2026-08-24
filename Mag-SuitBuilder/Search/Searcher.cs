@@ -1,4 +1,5 @@
-﻿using System;
+// Modified for the Shadowgain fork (PushResolved replay of starting-suit donor reservations), 2026-08-24. See git history for details. [LGPL 2.1]
+using System;
 using System.Collections.Generic;
 
 using Mag.Shared.Constants;
@@ -25,11 +26,12 @@ namespace Mag_SuitBuilder.Search
 					Equipment.RemoveAt(i);
 			}
 
-			// If we were given a starting suit, lets start our SuitBuilder off with all those items
+			// If we were given a starting suit, lets start our SuitBuilder off with all those items,
+			// reproducing any set-transfer donor reservations exactly
 			if (startingSuit != null)
 			{
 				foreach (var o in startingSuit)
-					SuitBuilder.Push(o.Value, o.Key);
+					SuitBuilder.PushResolved(o.Value, o.Key, startingSuit.GetConsumedDonor(o.Value));
 			}
 
 			// Remove pieces that can provide no beneficial spell

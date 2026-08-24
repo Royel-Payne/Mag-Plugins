@@ -1,3 +1,4 @@
+// Modified for the Shadowgain fork (set-tinkered variant support (OriginalSetId, DonorsByCoverage)), 2026-08-24. See git history for details. [LGPL 2.1]
 using System.Collections.Generic;
 
 using Mag.Shared.Constants;
@@ -16,6 +17,24 @@ namespace Mag_SuitBuilder.Search
 		public readonly CoverageMask Coverage;
 
 		public readonly int ItemSetId;
+
+		/// <summary>The set the physical item actually carries. Differs from ItemSetId only for set-tinkered variants.</summary>
+		public readonly int OriginalSetId;
+
+		/// <summary>
+		/// For set-tinkered variants only: the single-slot coverages this variant may be worn at (a subset of
+		/// the base item's reduction options, narrowed to coverages where a donor exists). Null for real items.
+		/// </summary>
+		public readonly IReadOnlyList<CoverageMask> WearableReductionOptions;
+
+		/// <summary>
+		/// For set-tinkered variants only: for each wearable coverage, the physical pieces that could be consumed
+		/// as the set donor. Pools are shared across variants of the same set; donor reservation happens in
+		/// SuitBuilder at push time. Null for real items.
+		/// </summary>
+		public readonly IReadOnlyDictionary<CoverageMask, List<ExtendedMyWorldObject>> DonorsByCoverage;
+
+		public bool IsSetTinkeredVariant { get { return DonorsByCoverage != null; } }
 
 
 		public readonly int ObjectClass;
@@ -44,7 +63,7 @@ namespace Mag_SuitBuilder.Search
 
 		public readonly List<Spell> SpellsToUseInSearch = new List<Spell>();
 
-		public int SpellBitmap;
+		public long SpellBitmap;
 
 
 		public LeanMyWorldObject(ExtendedMyWorldObject myWorldObject)
@@ -56,6 +75,8 @@ namespace Mag_SuitBuilder.Search
 			Coverage = myWorldObject.Coverage;
 
 			ItemSetId = myWorldObject.IntValues.ContainsKey(265) ? myWorldObject.IntValues[265] : 0;
+
+			OriginalSetId = ItemSetId;
 
 
 			ObjectClass = myWorldObject.ObjectClass;
@@ -83,13 +104,27 @@ namespace Mag_SuitBuilder.Search
 		}
 
 		/// <summary>
+		/// Creates a hypothetical set-tinkered variant: the same physical item, but worn with a different
+		/// attribute set that must be provided by consuming a donor piece at suit build time.
+		/// </summary>
+		public LeanMyWorldObject(ExtendedMyWorldObject myWorldObject, int transferredSetId, IReadOnlyList<CoverageMask> wearableReductionOptions, IReadOnlyDictionary<CoverageMask, List<ExtendedMyWorldObject>> donorsByCoverage)
+			: this(myWorldObject)
+		{
+			ItemSetId = transferredSetId;
+			WearableReductionOptions = wearableReductionOptions;
+			DonorsByCoverage = donorsByCoverage;
+		}
+
+		/// <summary>
 		/// Before you use this function, BuiltItemSearchCache() must have been called on this object.
 		/// </summary>
 		/// <param name="compareItem"></param>
 		/// <returns></returns>
 		public bool IsSurpassedBy(LeanMyWorldObject compareItem)
 		{
-			// Items must be of the same armor set
+			// Items must be of the same armor set.
+			// A set-tinkered variant reports its transferred set here, so dominance compares like-for-like.
+			// Dominance only removes wearable candidates; donor pools are built from the raw inventory and are unaffected.
 			if (compareItem.ItemSetId != ItemSetId)
 				return false;
 

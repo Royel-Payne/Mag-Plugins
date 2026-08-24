@@ -1,6 +1,11 @@
+// Modified for the Shadowgain fork (TryPush/PushResolved donor accounting for attribute set transfers), 2026-08-24. See git history for details. [LGPL 2.1]
+
+using System.Collections.Generic;
 
 using Mag.Shared.Constants;
 //using Mag.Shared.Spells;
+
+using Mag_SuitBuilder.Equipment;
 
 namespace Mag_SuitBuilder.Search
 {
@@ -16,11 +21,17 @@ namespace Mag_SuitBuilder.Search
 		{
 			public LeanMyWorldObject Piece;
 			public EquipMask Slot;
+			public ExtendedMyWorldObject ReservedDonor; // Non-null only when Piece is a set-tinkered variant
 			//public int SpellCount; // Used for the old search compare method
 		}
 
+		// Every physical item this suit uses, worn or reserved as a consumed set-transfer donor.
+		// Invariant: {worn pieces} and {reserved donors} are disjoint, so no item is ever worn twice,
+		// worn and consumed, or consumed for two different transfers.
+		readonly HashSet<ExtendedMyWorldObject> usedPhysicalItems = new HashSet<ExtendedMyWorldObject>(ReferenceEqualityComparer.Instance);
+
 		readonly PieceSlotCache[] slotCache = new PieceSlotCache[17];
-		readonly int[] spellBitmaps = new int[17];
+		readonly long[] spellBitmaps = new long[17];
 		int nextOpenCacheIndex;
 
 		EquipMask occupiedSlots = EquipMask.None;
@@ -34,10 +45,60 @@ namespace Mag_SuitBuilder.Search
 
 		public int TotalBodyArmorPieces { get; private set; }
 
-		public void Push(LeanMyWorldObject item, EquipMask slot)
+		/// <summary>
+		/// Tries to add a piece to the suit at the given slot.
+		/// Fails if the physical item is already used by this suit (worn in another slot, or reserved as a
+		/// consumed set-transfer donor), or if the piece is a set-tinkered variant and no free donor of the
+		/// transferred set is available for the worn coverage.
+		/// </summary>
+		public bool TryPush(LeanMyWorldObject item, EquipMask slot)
+		{
+			if (usedPhysicalItems.Contains(item.ExtendedMyWorldObject))
+				return false;
+
+			ExtendedMyWorldObject donor = null;
+
+			if (item.IsSetTinkeredVariant)
+			{
+				CoverageMask coverage = SetTinkering.SlotToCoverage(slot);
+
+				List<ExtendedMyWorldObject> pool;
+				if (coverage == CoverageMask.None || !item.DonorsByCoverage.TryGetValue(coverage, out pool))
+					return false;
+
+				// Pools are sorted so inflexible/least valuable donors are consumed first
+				foreach (ExtendedMyWorldObject candidate in pool)
+				{
+					if (candidate != item.ExtendedMyWorldObject && !usedPhysicalItems.Contains(candidate))
+					{
+						donor = candidate;
+						break;
+					}
+				}
+
+				if (donor == null)
+					return false;
+			}
+
+			PushResolved(item, slot, donor);
+
+			return true;
+		}
+
+		/// <summary>
+		/// Adds a piece with an already-chosen donor (or none). Used by Clone() and starting-suit replay so
+		/// donor reservations are reproduced exactly rather than re-chosen.
+		/// </summary>
+		public void PushResolved(LeanMyWorldObject item, EquipMask slot, ExtendedMyWorldObject consumedDonor)
 		{
 			slotCache[nextOpenCacheIndex].Piece = item;
 			slotCache[nextOpenCacheIndex].Slot = slot;
+			slotCache[nextOpenCacheIndex].ReservedDonor = consumedDonor;
+
+			usedPhysicalItems.Add(item.ExtendedMyWorldObject);
+
+			if (consumedDonor != null)
+				usedPhysicalItems.Add(consumedDonor);
 			//slotCache[nextOpenCacheIndex].SpellCount = item.SpellsToUseInSearch.Count; // Used for the old search compare method
 
 			occupiedSlots |= slot;
@@ -68,6 +129,14 @@ namespace Mag_SuitBuilder.Search
 
 		public void Pop()
 		{
+			usedPhysicalItems.Remove(slotCache[nextOpenCacheIndex - 1].Piece.ExtendedMyWorldObject);
+
+			if (slotCache[nextOpenCacheIndex - 1].ReservedDonor != null)
+			{
+				usedPhysicalItems.Remove(slotCache[nextOpenCacheIndex - 1].ReservedDonor);
+				slotCache[nextOpenCacheIndex - 1].ReservedDonor = null;
+			}
+
 			occupiedSlots ^= slotCache[nextOpenCacheIndex - 1].Slot;
 
 			//nextOpenSpellIndex -= slotCache[nextOpenCacheIndex - 1].SpellCount; // Used for the old search compare method
@@ -142,7 +211,7 @@ namespace Mag_SuitBuilder.Search
 			SuitBuilder newSuit = new SuitBuilder();
 
 			for (int i = 0; i < nextOpenCacheIndex; i++)
-				newSuit.Push(slotCache[i].Piece, slotCache[i].Slot);
+				newSuit.PushResolved(slotCache[i].Piece, slotCache[i].Slot, slotCache[i].ReservedDonor);
 
 			return newSuit;
 		}
@@ -152,7 +221,7 @@ namespace Mag_SuitBuilder.Search
 			CompletedSuit suit = new CompletedSuit();
 
 			for (int i = 0; i < nextOpenCacheIndex; i++)
-				suit.AddItem(slotCache[i].Slot, slotCache[i].Piece);
+				suit.AddItem(slotCache[i].Slot, slotCache[i].Piece, slotCache[i].ReservedDonor);
 
 			return suit;
 		}
