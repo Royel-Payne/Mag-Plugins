@@ -35,6 +35,12 @@ namespace Mag_SuitBuilder.Search
 		/// </summary>
 		public bool AllowSetTransfers { get; set; }
 
+		/// <summary>
+		/// Run the armor search without spawning parallel work. For runtimes without real
+		/// threads (e.g. WebAssembly in the browser) where Parallel.ForEach cannot be used.
+		/// </summary>
+		public bool SingleThreaded { get; set; }
+
 
 		public bool ItemPassesRules(ExtendedMyWorldObject item)
 		{

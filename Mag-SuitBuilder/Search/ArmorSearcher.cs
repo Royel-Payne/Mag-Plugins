@@ -194,7 +194,10 @@ namespace Mag_SuitBuilder.Search
 
 			if (index == 0) // If this is the first bucket we're searching through, multi-thread the subsearches
 			{
-				Parallel.ForEach(buckets[index], piece =>
+				// Shared body so the parallel and sequential paths cannot drift apart.
+				// SingleThreaded is for runtimes without threads (e.g. WebAssembly), where
+				// Parallel.ForEach's blocking join is unsafe.
+				void SearchTopLevelPiece(LeanMyWorldObject piece)
 				{
 					SuitBuilder clone = builder.Clone();
 
@@ -210,7 +213,15 @@ namespace Mag_SuitBuilder.Search
 							}
 						}
 					}
-				});
+				}
+
+				if (Config.SingleThreaded)
+				{
+					foreach (var piece in buckets[index])
+						SearchTopLevelPiece(piece);
+				}
+				else
+					Parallel.ForEach(buckets[index], SearchTopLevelPiece);
 			}
 			else
 			{

@@ -203,7 +203,7 @@ public sealed class InventoryStore
 		return new SpellDto(spell.Id, spell.Name, spell.CantripLevel.ToString());
 	}
 
-	static ItemDto ToItemDto(LoadedItem item)
+	internal static ItemDto ToItemDto(LoadedItem item)
 	{
 		var mwo = item.Mwo;
 

@@ -1,0 +1,52 @@
+<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <!-- Dot-free: SpellTools derives the embedded-resource root from the first dot-segment
+         of the first manifest resource name (see Shared\Spells\SpellTools.cs). -->
+    <RootNamespace>MagSuitBuilderWasm</RootNamespace>
+    <AssemblyName>MagSuitBuilderWasm</AssemblyName>
+    <!-- Required by the [JSImport]/[JSExport] source generator -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Solver uses only ordinal/invariant comparisons; drops the ICU data payload -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <PublishTrimmed>true</PublishTrimmed>
+    <RunAOTCompilation Condition="'$(Configuration)' == 'Release'">true</RunAOTCompilation>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Shared\Constants\*.cs" Link="Shared\Constants\%(Filename)%(Extension)" />
+    <Compile Include="..\Shared\ItemInfo.cs" Link="Shared\ItemInfo.cs" />
+    <Compile Include="..\Shared\MyWorldObject.cs" Link="Shared\MyWorldObject.cs" />
+    <Compile Include="..\Shared\ObjectClass.cs" Link="Shared\ObjectClass.cs" />
+    <Compile Include="..\Shared\SerializableDictionary.cs" Link="Shared\SerializableDictionary.cs" />
+    <Compile Include="..\Shared\Spells\Spell.cs" Link="Shared\Spells\Spell.cs" />
+    <Compile Include="..\Shared\Spells\SpellTools.cs" Link="Shared\Spells\SpellTools.cs" />
+    <Compile Include="..\Mag-SuitBuilder\Search\*.cs" Link="Search\%(Filename)%(Extension)" />
+    <Compile Include="..\Mag-SuitBuilder\Equipment\ExtendedMyWorldObject.cs" Link="Equipment\ExtendedMyWorldObject.cs" />
+    <!-- Pure-C# pieces of the local web host, reused verbatim -->
+    <Compile Include="..\Mag-SuitBuilder-Web\Models\Dtos.cs" Link="Models\Dtos.cs" />
+    <Compile Include="..\Mag-SuitBuilder-Web\Services\CantripCatalog.cs" Link="Services\CantripCatalog.cs" />
+    <Compile Include="..\Mag-SuitBuilder-Web\Services\ServerFilters.cs" Link="Services\ServerFilters.cs" />
+    <Compile Include="..\Mag-SuitBuilder-Web\Services\SuitStore.cs" Link="Services\SuitStore.cs" />
+    <Compile Include="..\Mag-SuitBuilder-Web\Services\InventoryStore.cs" Link="Services\InventoryStore.cs" />
+    <!-- Linked for SearchValidationException + shared session types; its Thread-based
+         orchestration is never invoked on WASM (WasmSearchRunner replaces it). -->
+    <Compile Include="..\Mag-SuitBuilder-Web\Services\SearchSession.cs" Link="Services\SearchSession.cs" />
+    <Compile Include="..\Mag-SuitBuilder-Web\Services\EventHub.cs" Link="Services\EventHub.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="..\Shared\Spells\Spells.csv" Link="Shared\Spells\Spells.csv" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- XmlSerializer reflects over ExtendedMyWorldObject/SerializableDictionary; keep our
+         whole assembly (and the reflection targets in it) out of the trimmer's reach. -->
+    <TrimmerRootAssembly Include="MagSuitBuilderWasm" />
+  </ItemGroup>
+
+</Project>
