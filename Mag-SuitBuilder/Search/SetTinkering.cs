@@ -88,6 +88,39 @@ namespace Mag_SuitBuilder.Search
 		}
 
 		/// <summary>
+		/// True when the donor itself already carries (same or better) every search-relevant spell
+		/// the target has. A transfer moves ONLY the set id - the variant keeps the target's spells
+		/// and AL - so in that case wearing the donor outright gives the same set, in the same slot,
+		/// with equal-or-better cantrips and no transfer. Such a variant can never beat it and is
+		/// not worth offering. AL is deliberately not part of this test: per Chris, armor level
+		/// alone is never worth spending a donor on.
+		/// </summary>
+		static bool DonorCoversTargetSpells(ExtendedMyWorldObject donor, ExtendedMyWorldObject target, SearcherConfiguration config)
+		{
+			foreach (Spell targetSpell in target.CachedSpells)
+			{
+				if (!config.SpellPassesRules(targetSpell))
+					continue;
+
+				bool covered = false;
+
+				foreach (Spell donorSpell in donor.CachedSpells)
+				{
+					if (config.SpellPassesRules(donorSpell) && donorSpell.IsSameOrSurpasses(targetSpell))
+					{
+						covered = true;
+						break;
+					}
+				}
+
+				if (!covered)
+					return false;
+			}
+
+			return true;
+		}
+
+		/// <summary>
 		/// Builds hypothetical set-tinkered pieces for the search.
 		/// For every eligible piece in the inventory and every concrete loot set selected in the configuration,
 		/// a variant is created that wears the piece with the desired set, provided at least one donor of that
@@ -174,7 +207,23 @@ namespace Mag_SuitBuilder.Search
 
 					foreach (CoverageMask coverage in SingleSlotCoverages(target))
 					{
-						if (poolsByCoverage.ContainsKey(coverage))
+						List<ExtendedMyWorldObject> pool;
+						if (!poolsByCoverage.TryGetValue(coverage, out pool))
+							continue;
+
+						// Skip dominated options: a donor in this slot that already covers the
+						// target's relevant spells makes the transfer pointless (see helper).
+						bool dominated = false;
+						foreach (ExtendedMyWorldObject candidateDonor in pool)
+						{
+							if (DonorCoversTargetSpells(candidateDonor, target, config))
+							{
+								dominated = true;
+								break;
+							}
+						}
+
+						if (!dominated)
 							wearableOptions.Add(coverage);
 					}
 
@@ -256,25 +305,34 @@ namespace Mag_SuitBuilder.Search
 			CoverageMask wornCoverage = SlotToCoverage(wornSlot);
 			string setName = SetName(variant.ItemSetId);
 
+			// Spell out the direction unambiguously: which piece is KEPT (and what set it loses),
+			// which piece is CONSUMED, and that nothing but the set id moves. One confusing card
+			// produced three different readings between Chris and Claude - never again.
+			string keepAndConvert = "You KEEP " + Describe(target) + ": it loses " + SetName(target.ItemSetId)
+				+ " and becomes " + setName + ". Only the set id moves - it keeps its own cantrips and AL.";
+			string consume = "You DESTROY the donor " + Describe(donor) + " (its " + setName + " is what transfers).";
+
 			bool targetNeedsReduction = target.Coverage != wornCoverage;
 
 			if (donor.Coverage == target.Coverage)
 			{
 				// Coverages already match, so transfer first; the target only needs reducing to be worn in this suit
-				lines.Add("Transfer " + setName + " from " + Describe(donor) + " onto " + Describe(target) + " - coverages already match; donor is destroyed");
+				lines.Add(keepAndConvert);
+				lines.Add(consume);
 
 				if (targetNeedsReduction)
-					lines.Add("Reduce " + Describe(target) + " to " + CoverageName(wornCoverage) + " with " + ReductionToolFor(wornCoverage));
+					lines.Add("Then reduce " + Describe(target) + " to " + CoverageName(wornCoverage) + " with " + ReductionToolFor(wornCoverage));
 			}
 			else
 			{
 				if (targetNeedsReduction)
-					lines.Add("Reduce " + Describe(target) + " to " + CoverageName(wornCoverage) + " with " + ReductionToolFor(wornCoverage));
+					lines.Add("First reduce " + Describe(target) + " to " + CoverageName(wornCoverage) + " with " + ReductionToolFor(wornCoverage));
 
 				if (donor.Coverage != wornCoverage)
-					lines.Add("Reduce " + Describe(donor) + " to " + CoverageName(wornCoverage) + " with " + ReductionToolFor(wornCoverage));
+					lines.Add((targetNeedsReduction ? "Also reduce " : "First reduce ") + Describe(donor) + " to " + CoverageName(wornCoverage) + " with " + ReductionToolFor(wornCoverage));
 
-				lines.Add("Transfer " + setName + " from " + Describe(donor) + " onto " + Describe(target) + " - donor is destroyed");
+				lines.Add(keepAndConvert);
+				lines.Add(consume);
 			}
 
 			return lines;
