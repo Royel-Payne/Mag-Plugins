@@ -414,6 +414,10 @@ namespace Mag_SuitBuilder
 			config.SecondaryArmorSet = filtersControl1.SecondaryArmorSetId;
 			config.AllowSetTransfers = filtersControl1.AllowSetTransfers;
 
+			// CompareSuits ranks by depth in the chosen sets; remember them for this search's results
+			rankPrimarySetId = config.PrimaryArmorSet;
+			rankSecondarySetId = config.SecondaryArmorSet;
+
 			// Build the list of items we're going to use in our search
 			searchItems = new List<LeanMyWorldObject>();
 
@@ -648,15 +652,24 @@ namespace Mag_SuitBuilder
 				BeginInvoke((System.Windows.Forms.MethodInvoker)(() => AddCompletedSuitToTreeView(obj)));
 		}
 
+		// The sets chosen for the current search — CompareSuits ranks by depth in these
+		int rankPrimarySetId = 255;
+		int rankSecondarySetId = 255;
+
 		/// <summary>
-		/// Suit ranking: piece count, then cantrips, then FEWEST set transfers, then armor level.
-		/// Set transfers consume the donor piece, so they outrank AL polish: a transfer has to buy
-		/// pieces or cantrips to beat a transfer-free suit, never armor level alone. Keep this in
-		/// step with SuitStore.Compare (web) and compareSuits in format.js (browser UIs).
+		/// Suit ranking, in the user's priority order: piece count, then depth in the CHOSEN sets
+		/// (find the sets we want first — capped at 5/4 where the builder caps them), then cantrips,
+		/// then FEWEST set transfers (the tool is expensive: it must buy set depth or cantrips,
+		/// never AL polish), then armor level. Keep this in step with SuitStore.Compare (web) and
+		/// compareSuits in format.js (browser UIs).
 		/// </summary>
-		static int CompareSuits(CompletedSuit a, CompletedSuit b)
+		int CompareSuits(CompletedSuit a, CompletedSuit b)
 		{
 			int result = b.Count.CompareTo(a.Count);
+			if (result != 0) return result;
+			result = Math.Min(5, b.CountOfSet(rankPrimarySetId)).CompareTo(Math.Min(5, a.CountOfSet(rankPrimarySetId)));
+			if (result != 0) return result;
+			result = Math.Min(4, b.CountOfSet(rankSecondarySetId)).CompareTo(Math.Min(4, a.CountOfSet(rankSecondarySetId)));
 			if (result != 0) return result;
 			result = b.TotalEffectiveLegendaries.CompareTo(a.TotalEffectiveLegendaries);
 			if (result != 0) return result;

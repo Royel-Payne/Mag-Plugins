@@ -41,6 +41,12 @@ namespace Mag_SuitBuilder.Search
 
 		readonly int[] armorSetCountById = new int[256];
 
+		/// <summary>How many pushed pieces belong to the given armor set. 0 for Any (255) / None.</summary>
+		public int SetPieceCount(int setId)
+		{
+			return (setId > 0 && setId < 255) ? armorSetCountById[setId] : 0;
+		}
+
 		public int TotalBaseArmorLevel { get; private set; }
 
 		public int TotalBodyArmorPieces { get; private set; }

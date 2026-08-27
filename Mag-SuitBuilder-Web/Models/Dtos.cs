@@ -153,6 +153,8 @@ public sealed record SuitDto(
 	int TotalEffectiveEpics,
 	int TotalEffectiveMajors,
 	int TotalSetTinkers,
+	int PrimarySetPieces,   // pieces in the search's chosen primary set, capped at 5 (bonus cap); 0 when primary is Any
+	int SecondarySetPieces, // pieces in the chosen secondary set, capped at 4 (the builder's secondary cap); 0 when Any
 	string Display,
 	IReadOnlyList<SetCountDto> SetCounts,
 	IReadOnlyList<SuitPieceDto> Pieces);

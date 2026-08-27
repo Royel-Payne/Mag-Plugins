@@ -48,6 +48,17 @@ namespace Mag_SuitBuilder.Search
 		/// </summary>
 		public int TotalSetTinkers { get { return consumedDonors.Count; } }
 
+		/// <summary>How many pieces in the suit belong to the given armor set. 0 for Any (255) / None.</summary>
+		public int CountOfSet(int setId)
+		{
+			if (setId <= 0 || setId >= 255)
+				return 0;
+
+			int count;
+			armorSetCounts.TryGetValue(setId, out count);
+			return count;
+		}
+
 		public Equipment.ExtendedMyWorldObject GetConsumedDonor(LeanMyWorldObject piece)
 		{
 			Equipment.ExtendedMyWorldObject donor;

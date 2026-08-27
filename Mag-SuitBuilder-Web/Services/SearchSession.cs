@@ -433,6 +433,8 @@ internal sealed class SearchSession
 			suit.TotalEffectiveEpics,
 			suit.TotalEffectiveMajors,
 			suit.TotalSetTinkers,
+			Math.Min(5, suit.CountOfSet(config.PrimaryArmorSet)),
+			Math.Min(4, suit.CountOfSet(config.SecondaryArmorSet)),
 			suit.ToString(),
 			setCounts.Select(kvp => new SetCountDto(kvp.Key, SetTinkering.SetName(kvp.Key), kvp.Value))
 				.OrderByDescending(s => s.Count).ToList(),

@@ -6,10 +6,11 @@ namespace MagSuitBuilderWeb.Services;
 
 /// <summary>
 /// Bounded, ranked store of completed suits for one search. The comparator matches the WinForms
-/// results tree exactly (Form1.CompareSuits): piece count desc, effective legendaries desc,
-/// effective epics desc, FEWEST set tinks, base AL desc, then insertion order. Set transfers
-/// consume the donor piece, so they rank above AL polish: a transfer has to buy pieces or
-/// cantrips to beat a transfer-free suit, never armor level alone.
+/// results tree exactly (Form1.CompareSuits) and encodes Chris's priority order: piece count,
+/// then depth in the CHOSEN sets (find the sets we want first), then cantrips, then FEWEST set
+/// transfers (the tool is expensive — it must buy set depth or cantrips, never AL polish), then
+/// base AL, then insertion order. Jewelry/clothing fill remaining cantrip gaps by construction —
+/// the accessory phase runs after armor.
 /// Parent links mirror Form1.FindDeepestNode's superset nesting.
 /// </summary>
 internal sealed class SuitStore
@@ -28,6 +29,10 @@ internal sealed class SuitStore
 	static int Compare(Entry a, Entry b)
 	{
 		int result = b.Dto.Count.CompareTo(a.Dto.Count);
+		if (result != 0) return result;
+		result = b.Dto.PrimarySetPieces.CompareTo(a.Dto.PrimarySetPieces);
+		if (result != 0) return result;
+		result = b.Dto.SecondarySetPieces.CompareTo(a.Dto.SecondarySetPieces);
 		if (result != 0) return result;
 		result = b.Dto.TotalEffectiveLegendaries.CompareTo(a.Dto.TotalEffectiveLegendaries);
 		if (result != 0) return result;

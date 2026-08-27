@@ -112,9 +112,11 @@ namespace Mag_SuitBuilder.Search
 
 			// Reset our variables
 			highestArmorCountSuitBuilt = 0;
+			// Keyed by (piece count, primary-set depth) — see the report gate below. Depth 0..5.
 			highestArmorSuitsBuilt = new Dictionary<int, List<int>>();
 			for (int i = 1; i <= 17; i++)
-				highestArmorSuitsBuilt.Add(i, new List<int>(5));
+				for (int depth = 0; depth <= 5; depth++)
+					highestArmorSuitsBuilt.Add(i * 8 + depth, new List<int>(5));
 			completedSuits = new List<CompletedSuit>();
 
 			// Do the actual search here
@@ -152,8 +154,13 @@ namespace Mag_SuitBuilder.Search
 					if (builder.TotalBodyArmorPieces > highestArmorCountSuitBuilt)
 						highestArmorCountSuitBuilt = builder.TotalBodyArmorPieces;
 
-					// We should keep track of the highest AL suits we built for every number of armor count suits built, and only push out ones that fall within our top X
-					List<int> list = highestArmorSuitsBuilt[builder.Count];
+					// We should keep track of the highest AL suits we built for every number of armor count suits built, and only push out ones that fall within our top X.
+					// Shadowgain fork: the top-X AL lists are partitioned by how deep the suit goes into the
+					// chosen primary set (capped at 5, where set bonuses cap). Without this, high-AL scatter-set
+					// suits crowd the list and a set-focused suit with lower AL never gets reported at all —
+					// and the ranking downstream can't prefer what the searcher already threw away.
+					int primaryDepth = Math.Min(5, builder.SetPieceCount(Config.PrimaryArmorSet));
+					List<int> list = highestArmorSuitsBuilt[builder.Count * 8 + primaryDepth];
 					if (list.Count < list.Capacity)
 					{
 						if (!list.Contains(builder.TotalBaseArmorLevel))

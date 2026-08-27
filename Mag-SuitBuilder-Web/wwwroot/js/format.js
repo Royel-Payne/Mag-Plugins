@@ -59,6 +59,8 @@ export function levelName(level) {
 // Rank comparator — must match SuitStore.Compare on the server
 export function compareSuits(a, b) {
   if (b.count !== a.count) return b.count - a.count;
+  if ((b.primarySetPieces ?? 0) !== (a.primarySetPieces ?? 0)) return (b.primarySetPieces ?? 0) - (a.primarySetPieces ?? 0);
+  if ((b.secondarySetPieces ?? 0) !== (a.secondarySetPieces ?? 0)) return (b.secondarySetPieces ?? 0) - (a.secondarySetPieces ?? 0);
   if (b.totalEffectiveLegendaries !== a.totalEffectiveLegendaries) return b.totalEffectiveLegendaries - a.totalEffectiveLegendaries;
   if (b.totalEffectiveEpics !== a.totalEffectiveEpics) return b.totalEffectiveEpics - a.totalEffectiveEpics;
   if (a.totalSetTinkers !== b.totalSetTinkers) return a.totalSetTinkers - b.totalSetTinkers;
