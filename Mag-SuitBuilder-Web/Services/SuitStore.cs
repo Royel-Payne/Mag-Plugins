@@ -6,8 +6,10 @@ namespace MagSuitBuilderWeb.Services;
 
 /// <summary>
 /// Bounded, ranked store of completed suits for one search. The comparator matches the WinForms
-/// results tree exactly (Form1.AddCompletedSuitToTreeView): piece count desc, base AL desc,
-/// effective legendaries desc, effective epics desc, fewest set tinks, then insertion order.
+/// results tree exactly (Form1.CompareSuits): piece count desc, effective legendaries desc,
+/// effective epics desc, FEWEST set tinks, base AL desc, then insertion order. Set transfers
+/// consume the donor piece, so they rank above AL polish: a transfer has to buy pieces or
+/// cantrips to beat a transfer-free suit, never armor level alone.
 /// Parent links mirror Form1.FindDeepestNode's superset nesting.
 /// </summary>
 internal sealed class SuitStore
@@ -27,13 +29,13 @@ internal sealed class SuitStore
 	{
 		int result = b.Dto.Count.CompareTo(a.Dto.Count);
 		if (result != 0) return result;
-		result = b.Dto.TotalBaseArmorLevel.CompareTo(a.Dto.TotalBaseArmorLevel);
-		if (result != 0) return result;
 		result = b.Dto.TotalEffectiveLegendaries.CompareTo(a.Dto.TotalEffectiveLegendaries);
 		if (result != 0) return result;
 		result = b.Dto.TotalEffectiveEpics.CompareTo(a.Dto.TotalEffectiveEpics);
 		if (result != 0) return result;
 		result = a.Dto.TotalSetTinkers.CompareTo(b.Dto.TotalSetTinkers);
+		if (result != 0) return result;
+		result = b.Dto.TotalBaseArmorLevel.CompareTo(a.Dto.TotalBaseArmorLevel);
 		if (result != 0) return result;
 		return a.Order.CompareTo(b.Order);
 	}

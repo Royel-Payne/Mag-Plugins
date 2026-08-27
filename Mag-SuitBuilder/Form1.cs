@@ -648,6 +648,25 @@ namespace Mag_SuitBuilder
 				BeginInvoke((System.Windows.Forms.MethodInvoker)(() => AddCompletedSuitToTreeView(obj)));
 		}
 
+		/// <summary>
+		/// Suit ranking: piece count, then cantrips, then FEWEST set transfers, then armor level.
+		/// Set transfers consume the donor piece, so they outrank AL polish: a transfer has to buy
+		/// pieces or cantrips to beat a transfer-free suit, never armor level alone. Keep this in
+		/// step with SuitStore.Compare (web) and compareSuits in format.js (browser UIs).
+		/// </summary>
+		static int CompareSuits(CompletedSuit a, CompletedSuit b)
+		{
+			int result = b.Count.CompareTo(a.Count);
+			if (result != 0) return result;
+			result = b.TotalEffectiveLegendaries.CompareTo(a.TotalEffectiveLegendaries);
+			if (result != 0) return result;
+			result = b.TotalEffectiveEpics.CompareTo(a.TotalEffectiveEpics);
+			if (result != 0) return result;
+			result = a.TotalSetTinkers.CompareTo(b.TotalSetTinkers);
+			if (result != 0) return result;
+			return b.TotalBaseArmorLevel.CompareTo(a.TotalBaseArmorLevel);
+		}
+
 		void AddCompletedSuitToTreeView(CompletedSuit suit)
 		{
 			CompletedSuitTreeNode newNode = new CompletedSuitTreeNode(suit);
@@ -664,35 +683,10 @@ namespace Mag_SuitBuilder
 
 				CompletedSuitTreeNode nodeAsSuit = (nodes[i] as CompletedSuitTreeNode);
 
-				//if (nodeAsSuit != null && (nodeAsSuit.Suit.Count < suit.Count || (nodeAsSuit.Suit.Count == suit.Count && nodeAsSuit.Suit.TotalBaseArmorLevel < suit.TotalBaseArmorLevel)))
-				if (nodeAsSuit != null)
+				if (nodeAsSuit != null && CompareSuits(nodeAsSuit.Suit, suit) > 0)
 				{
-					if (nodeAsSuit.Suit.Count < suit.Count)
-					{
-						nodes.Insert(i, newNode);
-						break;
-					}
-
-					if (nodeAsSuit.Suit.Count == suit.Count)
-					{
-						if (nodeAsSuit.Suit.TotalBaseArmorLevel < suit.TotalBaseArmorLevel)
-						{
-							nodes.Insert(i, newNode);
-							break;
-						}
-
-						if (nodeAsSuit.Suit.TotalBaseArmorLevel == suit.TotalBaseArmorLevel)
-						{
-							// At otherwise equal quality, suits requiring fewer set transfers sort first
-							if ((nodeAsSuit.Suit.TotalEffectiveLegendaries < suit.TotalEffectiveLegendaries) ||
-								(nodeAsSuit.Suit.TotalEffectiveLegendaries == suit.TotalEffectiveLegendaries && nodeAsSuit.Suit.TotalEffectiveEpics < suit.TotalEffectiveEpics) ||
-								(nodeAsSuit.Suit.TotalEffectiveLegendaries == suit.TotalEffectiveLegendaries && nodeAsSuit.Suit.TotalEffectiveEpics == suit.TotalEffectiveEpics && nodeAsSuit.Suit.TotalSetTinkers > suit.TotalSetTinkers))
-							{
-								nodes.Insert(i, newNode);
-								break;
-							}
-						}
-					}
+					nodes.Insert(i, newNode);
+					break;
 				}
 			}
 		}

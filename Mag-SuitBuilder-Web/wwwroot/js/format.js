@@ -59,10 +59,10 @@ export function levelName(level) {
 // Rank comparator — must match SuitStore.Compare on the server
 export function compareSuits(a, b) {
   if (b.count !== a.count) return b.count - a.count;
-  if (b.totalBaseArmorLevel !== a.totalBaseArmorLevel) return b.totalBaseArmorLevel - a.totalBaseArmorLevel;
   if (b.totalEffectiveLegendaries !== a.totalEffectiveLegendaries) return b.totalEffectiveLegendaries - a.totalEffectiveLegendaries;
   if (b.totalEffectiveEpics !== a.totalEffectiveEpics) return b.totalEffectiveEpics - a.totalEffectiveEpics;
   if (a.totalSetTinkers !== b.totalSetTinkers) return a.totalSetTinkers - b.totalSetTinkers;
+  if (b.totalBaseArmorLevel !== a.totalBaseArmorLevel) return b.totalBaseArmorLevel - a.totalBaseArmorLevel;
   return a.suitId - b.suitId;
 }
 
